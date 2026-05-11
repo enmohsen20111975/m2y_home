@@ -595,6 +595,185 @@ Delete a prediction.
 
 ---
 
+## Chart APIs (For Mobile Apps)
+
+These APIs return OHLCV (Open, High, Low, Close, Volume) data for drawing charts in your mobile app.
+
+### GET /api/stocks/[ticker]/history
+Get stock price history for charts (OHLCV data).
+
+**Query Parameters:**
+- `days` (optional): Number of days (default: 90, max: 365)
+
+**Example:**
+```
+GET /api/stocks/COMI/history?days=30
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "ticker": "COMI",
+  "days": 30,
+  "data": [
+    {
+      "date": "2024-01-15",
+      "open": 25.00,
+      "high": 25.50,
+      "low": 24.80,
+      "close": 25.30,
+      "volume": 1000000,
+      "rsi": 55.5
+    },
+    {
+      "date": "2024-01-14",
+      "open": 24.50,
+      "high": 25.10,
+      "low": 24.40,
+      "close": 25.00,
+      "volume": 850000,
+      "rsi": 52.3
+    }
+  ],
+  "summary": {
+    "highest": 28.00,
+    "lowest": 22.50,
+    "avg_price": 25.50,
+    "total_volume": 25000000,
+    "start_price": 24.00,
+    "end_price": 25.30,
+    "change_percent": 5.42
+  }
+}
+```
+
+**Mobile Chart Usage:**
+- Use `date` for X-axis
+- Use `open`, `high`, `low`, `close` for candlestick charts
+- Use `volume` for volume bars
+- Use `rsi` for RSI indicator
+
+---
+
+### GET /api/crypto/ohlc
+Get cryptocurrency OHLCV data with technical indicators.
+
+**Query Parameters:**
+- `coin_id` (required): Coin ID (e.g., bitcoin, ethereum)
+- `days` (optional): Number of days (default: 30)
+- `interval` (optional): Interval (daily, hourly)
+
+**Example:**
+```
+GET /api/crypto/ohlc?coin_id=bitcoin&days=30
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "coin_id": "bitcoin",
+    "interval": "daily",
+    "days": 30,
+    "ohlcv": [
+      {
+        "timestamp": 1705363200000,
+        "open": 42000,
+        "high": 43500,
+        "low": 41500,
+        "close": 42800
+      }
+    ],
+    "indicators": {
+      "rsi": 55.5,
+      "sma": {
+        "sma20": 42500,
+        "sma50": 41000,
+        "sma200": 38000
+      },
+      "ema": {
+        "ema12": 42700,
+        "ema26": 42200,
+        "ema50": 41500
+      },
+      "macd": {
+        "macd": 500,
+        "signal": 450,
+        "histogram": 50
+      },
+      "bollingerBands": {
+        "upper": 44000,
+        "middle": 42500,
+        "lower": 41000,
+        "bandwidth": 7.06
+      },
+      "supportResistance": {
+        "resistance": 45000,
+        "support": 41000,
+        "allResistance": [45000, 46000, 48000],
+        "allSupport": [41000, 40000, 38000]
+      },
+      "currentPrice": 42800,
+      "priceChange24h": 800,
+      "priceChangePercent24h": 1.9
+    },
+    "signals": {
+      "signals": [
+        { "type": "buy", "strength": "moderate", "reason": "MACD إيجابي مع تقاطع صاعد" }
+      ],
+      "overall": {
+        "recommendation": "buy",
+        "confidence": 65,
+        "buySignals": 2,
+        "sellSignals": 1
+      }
+    }
+  }
+}
+```
+
+---
+
+### GET /api/market/gold/history
+Get gold price history for charts.
+
+**Query Parameters:**
+- `karat` (optional): Gold karat (24, 22, 21, 18) - default: 24
+- `days` (optional): Number of days (default: 30, max: 365)
+
+**Example:**
+```
+GET /api/market/gold/history?karat=24&days=30
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "karat": "24",
+  "days": 30,
+  "count": 30,
+  "data": [
+    {
+      "date": "2024-01-15T10:00:00Z",
+      "price": 4250.00,
+      "change": 50.00,
+      "currency": "EGP"
+    },
+    {
+      "date": "2024-01-14T10:00:00Z",
+      "price": 4200.00,
+      "change": -20.00,
+      "currency": "EGP"
+    }
+  ]
+}
+```
+
+---
+
 ## Admin API
 
 **Note: Admin APIs require authentication with admin privileges.**
