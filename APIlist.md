@@ -27,15 +27,15 @@ Local: http://localhost:3000/api
 ## Authentication
 
 ### POST /api/auth/register
-Register a new user.
+Register a new user (Web & Mobile).
 
 **Request Body:**
 ```json
 {
   "email": "user@example.com",
   "password": "password123",
-  "name": "User Name",
-  "username": "username"
+  "username": "username",
+  "risk_tolerance": "medium"
 }
 ```
 
@@ -43,12 +43,156 @@ Register a new user.
 ```json
 {
   "success": true,
-  "user": { "id": "...", "email": "user@example.com" }
+  "message": "تم إنشاء الحساب بنجاح",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "username": "username",
+    "default_risk_tolerance": "medium"
+  },
+  "api_key": "egx_user_id_timestamp"
 }
 ```
 
+---
+
+### Mobile Authentication APIs (For Mobile Apps)
+
+### POST /api/auth/login
+Login with email/username and password - Returns Bearer token for mobile.
+
+**Request Body:**
+```json
+{
+  "username_or_email": "user@example.com",
+  "password": "password123"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "message_ar": "تم تسجيل الدخول بنجاح",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "username": "username",
+    "name": "User Name",
+    "image": "https://...",
+    "subscription_tier": "free",
+    "is_admin": false
+  },
+  "token": "egx_uuid_token_timestamp",
+  "token_type": "Bearer",
+  "expires_in": 2592000
+}
+```
+
+---
+
+### POST /api/auth/google
+Login/Register with Google ID Token - For mobile apps using Google Sign-In SDK.
+
+**How to use:**
+1. Use Google Sign-In SDK in your mobile app
+2. Get the ID token from Google
+3. Send it to this endpoint
+
+**Request Body:**
+```json
+{
+  "id_token": "google_id_token_from_sdk"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Google login successful",
+  "message_ar": "تم تسجيل الدخول عبر جوجل بنجاح",
+  "user": {
+    "id": "uuid",
+    "email": "user@gmail.com",
+    "username": "user",
+    "name": "User Name",
+    "image": "https://...",
+    "subscription_tier": "free",
+    "is_admin": false
+  },
+  "token": "egx_uuid_token_timestamp",
+  "token_type": "Bearer",
+  "expires_in": 2592000,
+  "is_new_user": false
+}
+```
+
+---
+
+### GET /api/auth/me
+Get current user info using Bearer token.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "username": "username",
+    "name": "User Name",
+    "image": "https://...",
+    "subscription_tier": "free",
+    "default_risk_tolerance": "medium",
+    "is_admin": false,
+    "is_active": true,
+    "email_verified": true,
+    "last_login": "2024-01-15T10:30:00Z",
+    "created_at": "2024-01-01T00:00:00Z"
+  }
+}
+```
+
+---
+
+### POST /api/auth/logout
+Logout and invalidate token.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Logged out successfully",
+  "message_ar": "تم تسجيل الخروج بنجاح"
+}
+```
+
+---
+
 ### GET /api/auth/config
 Get authentication configuration.
+
+---
+
+### Web Authentication (NextAuth.js)
+
+For web applications, use the standard NextAuth.js flow:
+- **GET /api/auth/signin** - Sign in page
+- **GET /api/auth/signout** - Sign out
+- **GET /api/auth/callback/google** - Google OAuth callback
+- **GET /api/auth/session** - Get current session
 
 ---
 
