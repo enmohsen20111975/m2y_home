@@ -7,7 +7,7 @@ const SHARED_SECRET = process.env.SHARED_SECRET || '';
 /**
  * POST /api/payment/webhook
  * Webhook endpoint for m2y.net to notify about payment status
- * 
+ *
  * Expected JWT payload from m2y.net:
  * {
  *   user_id: string,
