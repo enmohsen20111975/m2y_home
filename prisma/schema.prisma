@@ -30,3 +30,51 @@ model Post {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// توصيات الخبراء
+model ExpertRecommendation {
+  id                    String    @id @default(cuid())
+  stock_symbol          String
+  stock_name_ar         String?
+  expert_name           String
+  expert_source         String?   @default("manual")
+  action                String    @default("BUY")     // BUY, SELL, HOLD
+  entry_price           Float?
+  target_price          Float?
+  stop_loss             Float?
+  recommendation_date   DateTime  @default(now())
+  expected_duration     String?
+  expected_duration_days Int?
+  status                String    @default("PENDING") // PENDING, ACTIVE, HIT_TARGET, STOPPED, CLOSED
+  final_price           Float?
+  profit_loss_percent   Float?
+  hit_target            Boolean?  @default(false)
+  hit_stop_loss         Boolean?  @default(false)
+  result_notes          String?
+  notes                 String?
+  verified_at           DateTime?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  @@index([expert_name])
+  @@index([stock_symbol])
+  @@index([status])
+  @@index([recommendation_date])
+}
+
+// سجل خبراء التوصيات
+model ExpertTrackRecord {
+  id                      String    @id @default(cuid())
+  expert_name             String    @unique
+  total_recommendations   Int       @default(0)
+  successful_recommendations Int    @default(0)
+  failed_recommendations  Int       @default(0)
+  success_rate            Float     @default(0)
+  avg_return              Float?
+  last_recommendation     DateTime?
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+
+  @@index([expert_name])
+  @@index([success_rate])
+}

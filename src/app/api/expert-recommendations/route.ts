@@ -4,7 +4,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
 import { db } from '@/lib/db';
 
 // GET /api/expert-recommendations - جلب توصيات الخبراء
@@ -21,29 +20,17 @@ export async function GET(request: NextRequest) {
     if (expert_name) where.expert_name = { contains: expert_name };
     if (ticker) where.stock_symbol = ticker.toUpperCase();
 
-    let recommendations = [];
-    let expertStats = [];
+    const recommendations = await db.expertRecommendation.findMany({
+      where,
+      orderBy: [{ recommendation_date: 'desc' }],
+      take: limit,
+    });
 
-    try {
-      const dbAny = db as any;
-      
-      recommendations = await dbAny.expertRecommendation.findMany({
-        where,
-        orderBy: [{ recommendation_date: 'desc' }],
-        take: limit,
-      });
-
-      // إحصائيات الخبراء
-      expertStats = await dbAny.expertTrackRecord.findMany({
-        orderBy: [{ success_rate: 'desc' }],
-        take: 10,
-      });
-    } catch (dbError) {
-      console.error('[Expert Recommendations] DB Error:', dbError);
-      // إذا فشل الاتصال، أرجع مصفوفة فارغة
-      recommendations = [];
-      expertStats = [];
-    }
+    // إحصائيات الخبراء
+    const expertStats = await db.expertTrackRecord.findMany({
+      orderBy: [{ success_rate: 'desc' }],
+      take: 10,
+    });
 
     return NextResponse.json({
       success: true,
@@ -63,7 +50,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const dbAny = db as any;
 
     const {
       stock_symbol,
@@ -80,7 +66,7 @@ export async function POST(request: NextRequest) {
       notes,
     } = body;
 
-    // المتطلبات الأساسية فقط: اسم السهم والسعر
+    // المتطلبات الأساسية فقط: اسم السهم
     if (!stock_symbol) {
       return NextResponse.json(
         { success: false, error: 'اسم السهم مطلوب (stock_symbol)' },
@@ -88,33 +74,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // استخدام قيم افتراضية للحقول الاختيارية
-    const finalExpertName = expert_name || 'غير محدد';
-    const finalAction = action || 'BUY';
-    const finalEntryPrice = entry_price ? parseFloat(entry_price) : 0;
-    const finalRecommendationDate = recommendation_date ? new Date(recommendation_date) : new Date();
-
-    const recommendation = await dbAny.ExpertRecommendation.create({
+    const recommendation = await db.expertRecommendation.create({
       data: {
-        id: randomUUID(),
         stock_symbol: stock_symbol.toUpperCase(),
-        expert_name: finalExpertName,
+        stock_name_ar: stock_name_ar || null,
+        expert_name: expert_name || 'غير محدد',
         expert_source: expert_source || 'manual',
-        action: finalAction.toUpperCase(),
-        entry_price: finalEntryPrice,
+        action: (action || 'BUY').toUpperCase(),
+        entry_price: entry_price ? parseFloat(entry_price) : null,
         target_price: target_price ? parseFloat(target_price) : null,
         stop_loss: stop_loss ? parseFloat(stop_loss) : null,
-        recommendation_date: finalRecommendationDate,
+        recommendation_date: recommendation_date ? new Date(recommendation_date) : new Date(),
         expected_duration: expected_duration || null,
         expected_duration_days: expected_duration_days ? parseInt(expected_duration_days) : null,
         status: 'PENDING',
         notes: notes || null,
-        updated_at: new Date(),
       },
     });
 
     // تحديث سجل الخبير
-    await updateExpertTrackRecord(dbAny, finalExpertName);
+    await updateExpertTrackRecord(expert_name || 'غير محدد');
 
     return NextResponse.json({
       success: true,
@@ -135,7 +114,6 @@ export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
     const { id, final_price, profit_loss_percent, hit_target, hit_stop_loss, status, result_notes } = body;
-    const dbAny = db as any;
 
     if (!id) {
       return NextResponse.json(
@@ -144,9 +122,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const updateData: any = {
-      updated_at: new Date(),
-    };
+    const updateData: any = {};
 
     if (final_price !== undefined) {
       updateData.final_price = parseFloat(final_price);
@@ -158,13 +134,13 @@ export async function PUT(request: NextRequest) {
     if (status) updateData.status = status.toUpperCase();
     if (result_notes) updateData.result_notes = result_notes;
 
-    const recommendation = await dbAny.ExpertRecommendation.update({
+    const recommendation = await db.expertRecommendation.update({
       where: { id },
       data: updateData,
     });
 
     // تحديث سجل الخبير
-    await updateExpertTrackRecord(dbAny, recommendation.expert_name);
+    await updateExpertTrackRecord(recommendation.expert_name);
 
     return NextResponse.json({
       success: true,
@@ -184,7 +160,6 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const dbAny = db as any;
 
     if (!id) {
       return NextResponse.json(
@@ -193,7 +168,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await dbAny.ExpertRecommendation.delete({
+    await db.expertRecommendation.delete({
       where: { id },
     });
 
@@ -211,16 +186,16 @@ export async function DELETE(request: NextRequest) {
 }
 
 // دالة تحديث سجل الخبير
-async function updateExpertTrackRecord(dbAny: any, expertName: string) {
+async function updateExpertTrackRecord(expertName: string) {
   try {
     // حساب إحصائيات الخبير
-    const stats = await dbAny.ExpertRecommendation.aggregate({
+    const stats = await db.expertRecommendation.aggregate({
       where: { expert_name: expertName, status: { in: ['HIT_TARGET', 'STOPPED', 'CLOSED'] } },
       _count: { id: true },
       _avg: { profit_loss_percent: true },
     });
 
-    const successful = await dbAny.ExpertRecommendation.count({
+    const successful = await db.expertRecommendation.count({
       where: { expert_name: expertName, hit_target: true },
     });
 
@@ -229,12 +204,12 @@ async function updateExpertTrackRecord(dbAny: any, expertName: string) {
     const avgReturn = stats._avg.profit_loss_percent || 0;
 
     // upsert سجل الخبير
-    const existing = await dbAny.ExpertTrackRecord.findUnique({
+    const existing = await db.expertTrackRecord.findUnique({
       where: { expert_name: expertName },
     });
 
     if (existing) {
-      await dbAny.ExpertTrackRecord.update({
+      await db.expertTrackRecord.update({
         where: { expert_name: expertName },
         data: {
           total_recommendations: total,
@@ -243,20 +218,17 @@ async function updateExpertTrackRecord(dbAny: any, expertName: string) {
           success_rate: successRate,
           avg_return: avgReturn,
           last_recommendation: new Date(),
-          updated_at: new Date(),
         },
       });
     } else {
-      await dbAny.ExpertTrackRecord.create({
+      await db.expertTrackRecord.create({
         data: {
-          id: randomUUID(),
           expert_name: expertName,
           total_recommendations: total,
           successful_recommendations: successful,
           failed_recommendations: total - successful,
           success_rate: successRate,
           avg_return: avgReturn,
-          updated_at: new Date(),
         },
       });
     }
